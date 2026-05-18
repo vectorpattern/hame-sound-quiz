@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ハメ音声Quiz</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #111;
+      color: #fff;
+      text-align: center;
+    }
+
+    .screen {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    h1, h2, p {
+      margin-bottom: 24px;
+    }
+
+    button {
+      font-size: 20px;
+      padding: 14px 28px;
+      margin: 10px;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      background: #ff4f8b;
+      color: white;
+      font-weight: bold;
+    }
+
+    button.secondary {
+      background: #555;
+    }
+
+    .answer-card {
+      background: rgba(255,255,255,0.1);
+      padding: 24px;
+      border-radius: 20px;
+      max-width: 420px;
+      width: 100%;
+    }
+
+    .answer-card img {
+      width: 100%;
+      border-radius: 16px;
+      margin-bottom: 20px;
+    }
+
+    .answer-info {
+      font-size: 20px;
+      margin: 14px 0;
+    }
+
+    .answer-info a {
+      color: #ffd36a;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .answer-info a:hover {
+      text-decoration: underline;
+    }
+
+    .quote-box {
+      max-width: 520px;
+      padding: 28px;
+      margin: 20px 0;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(8px);
+    }
+
+    .quote-text {
+     font-size: 24px;
+     line-height: 1.7;
+     font-weight: bold;
+    }
+
+    .quote-author {
+     font-size: 16px;
+     opacity: 0.8;
+     margin-top: 16px;
+    }
+
+    .safe-message {
+     font-size: 16px;
+     opacity: 0.85;
+    }
+
+    button.playing {
+      background: #e53935;
+    }
+
+    #actressImage,
+    #workImage {
+      width: 100%;
+      border-radius: 16px;
+      margin-bottom: 20px;
+    }
+
+    #workImage {
+      margin-top: 20px;
+    }
+
+    .image-block {
+      margin-bottom: 28px;
+    }
+
+    /* 女優画像 */
+    #actressImage {
+      width: 55%;
+      max-width: 180px;
+      border-radius: 16px;
+      display: block;
+      margin: 0 auto 12px auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      cursor: pointer;
+    }
+
+    /* 作品画像 */
+    #workImage {
+      width: 92%;
+      max-width: 360px;
+      border-radius: 16px;
+      display: block;
+      margin: 24px auto 12px auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      cursor: pointer;
+    }
+
+    .image-title {
+      font-size: 20px;
+      font-weight: bold;
+      line-height: 1.5;
+    }
+
+    .image-title a {
+      color: #ffd36a;
+      text-decoration: none;
+    }
+
+    .image-title a:hover {
+      text-decoration: underline;
+    }
+
+    #answerScreen {
+      position: relative;
+      overflow: hidden;
+      background-size: cover;
+      background-position: center;
+    }
+
+#answerScreen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(18px);
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 0;
+}
+
+#answerScreen .answer-card {
+  position: relative;
+  z-index: 1;
+}
+
+.image-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.image-modal img {
+  max-width: 92vw;
+  max-height: 92vh;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+}
+
+.image-modal.hidden {
+  display: none;
+}
+
+#actressImage,
+#workImage {
+  cursor: pointer;
+}
+
+  </style>
+</head>
+
+<body>
+
+  <!-- ① スタート画面 -->
+  <section id="startScreen" class="screen">
+    <h1>年齢確認</h1>
+    <p>あなたは18歳以上ですか？</p>
+
+    <div>
+      <button onclick="startGame()">はい</button>
+      <button class="secondary" onclick="showNoMessage()">いいえ</button>
+    </div>
+
+    <p id="noMessage" class="hidden">もう少し大人になったら来てください。</p>
+  </section>
+
+
+  <!-- ② 問題再生画面 -->
+  <section id="questionScreen" class="screen hidden">
+    <h2 id="progress">1問目</h2>
+
+    <button id="questionPlayBtn" onclick="toggleAudio()">▶ 再生</button>
+    <button onclick="showAnswer()">解答を見る</button>
+
+    <audio id="audioPlayer"></audio>
+  </section>
+
+
+  <!-- ③ 解答画面 -->
+   <section id="answerScreen" class="screen hidden">
+
+      <div class="answer-card">
+
+       <!-- 女優 -->
+       <div class="image-block">
+          <img id="actressImage" src="" alt="女優画像" onclick="openImageModal(this.src)">
+          <div class="image-title">
+             <a id="actressLink"
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer">
+                <span id="actressName"></span>
+             </a>
+          </div>
+       </div>
+
+       <!-- 作品 -->
+       <div class="image-block">
+         <img id="workImage" src="" alt="作品画像" onclick="openImageModal(this.src)">
+         <div class="image-title">
+            <a id="titleLink"
+               href="#"
+               target="_blank"
+               rel="noopener noreferrer">
+               <span id="workTitle"></span>
+            </a>
+          </div>
+       </div>
+       
+       <button id="answerPlayBtn" onclick="toggleAudio()">▶ 再生</button>
+       <button id="nextBtn" onclick="nextQuestion()">次へ</button>
+       <button class="secondary" onclick="endGame()">終了</button>
+      </div>
+    </section>
+
+  <!-- ④ 終了画面 -->
+  <section id="endScreen" class="screen hidden">
+    <p class="ending-message">今夜はここまで。</p>
+    <button onclick="restartGame()">もう一度聞く！</button>
+  </section>
+
+
+  <script>
+    const data = [
+      {
+        audio: "audio/rki00698.mp3",
+
+        actress: "逢沢みゆ",
+        actressUrl: "https://video.dmm.co.jp/av/list/?actress=1088602",
+        actressImage: "images/actress/aizawa_miyu.webp",
+
+        title: "もう一度、してみたい。 性格は最悪だけどチ〇ポだけは超好み。身体の相性が最高すぎてまさかのリピートで生姦SEXヤリまくり",
+        titleUrl: "https://video.dmm.co.jp/av/content/?id=rki00698&i3_ref=list&i3_ord=1&i3_pst=1&dmmref=video_list",
+        titleImage: "images/title/rki00698.webp"
+      },
+      {
+        audio: "audio/sone00638.mp3",
+
+        actress: "瀬戸環奈",
+        actressUrl: "https://video.dmm.co.jp/av/list/?actress=1099472",
+        actressImage: "images/actress/seto_kanna.webp",
+
+        title: "最強ヒロインの素顔とリアルセックスが見たい！筋書きなしで性欲のままに何度もずっと求め合うエロくて生々しい2泊3日SEXデート",
+        titleUrl: "https://video.dmm.co.jp/av/content/?id=sone00638&i3_ref=list&i3_ord=1&i3_pst=1&dmmref=video_list",
+        titleImage: "images/title/sone00638.webp"
+      },
+            {
+        audio: "audio/sone00311.mp3",
+
+        actress: "河北彩伽（河北彩花）",
+        actressUrl: "https://video.dmm.co.jp/av/list/?actress=1044864",
+        actressImage: "images/actress/kawakita_saika.webp",
+
+        title: "肉体はびくびく身悶え、体液だらだら垂れ流す、河北彩伽がケダモノ覚醒した強媚薬入りオイルマッサージ",
+        titleUrl: "https://video.dmm.co.jp/av/content/?id=sone00311&i3_ref=list&i3_ord=2&i3_pst=1&dmmref=video_list",
+        titleImage: "images/title/sone00311.webp"
+      },
+            {
+        audio: "audio/adn00765.mp3",
+
+        actress: "美園和花",
+        actressUrl: "https://video.dmm.co.jp/av/list/?actress=1044099",
+        actressImage: "images/actress/misono_waka.webp",
+
+        title: "夫公認NTR 浮気相手（僕の上司）とのセックスでしかイケなくなってしまった妻に懇願されて、泣きながら浮気を許すしかなかった僕。",
+        titleUrl: "https://video.dmm.co.jp/av/content/?id=adn00765&i3_ref=list&i3_ord=11&i3_pst=1&dmmref=video_list",
+        titleImage: "images/title/adn00765.webp"
+      },
+            {
+        audio: "audio/idbd00959.mp3",
+
+        actress: "北岡果林",
+        actressUrl: "https://video.dmm.co.jp/av/list/?actress=1092427",
+        actressImage: "images/actress/kitaoka_karin.webp",
+
+        title: "8時間BEST SweetCutie Love 恋してしまう可愛さ！！超名門大に通う現役女子大生のエッチ全部見せ！！",
+        titleUrl: "https://video.dmm.co.jp/av/content/?id=idbd00959&i3_ref=list&i3_ord=1&i3_pst=1&dmmref=video_list",
+        titleImage: "images/title/idbd00959.webp"
+      },
+            {
+        audio: "audio/lulu00421.mp3",
+
+        actress: "波多野結衣",
+        actressUrl: "https://video.dmm.co.jp/av/list/?actress=26225",
+        actressImage: "images/actress/hatano_yui.webp",
+
+        title: "巨乳叔母に無邪気なフル勃起オナニーを何度も見せつけたら甥っ子性欲若硬ち○ぽをしっかり握って密着しながらお叱り手コキでたっぷり搾り射（だ）された。",
+        titleUrl: "https://video.dmm.co.jp/av/content/?id=lulu00421&i3_ref=list&i3_ord=3&i3_pst=1&dmmref=video_list",
+        titleImage: "images/title/lulu00421.webp"
+      },
+            {
+        audio: "audio/ktra00654.mp3",
+
+        actress: "柏木こなつ",
+        actressUrl: "https://video.dmm.co.jp/av/list/?actress=1075302",
+        actressImage: "images/actress/kasiwagi_konatu.webp",
+
+        title: "＃オナホ女子",
+        titleUrl: "https://video.dmm.co.jp/av/content/?id=ktra00654&i3_ref=list&i3_ord=5&i3_pst=1&dmmref=video_list",
+        titleImage: "images/title/ktra00654.webp"
+      },
+            {
+        audio: "audio/sone00411.mp3",
+
+        actress: "浅野こころ",
+        actressUrl: "https://video.dmm.co.jp/av/list/?actress=1086581",
+        actressImage: "images/actress/asano_kokoro.webp",
+
+        title: "無口で大人しい女生徒になら何してもいいんじゃないか？地味な図書委員は担任に犯●れてもイキまくった。",
+        titleUrl: "https://video.dmm.co.jp/av/content/?id=sone00411&i3_ref=list&i3_ord=2&i3_pst=1&dmmref=video_list",
+        titleImage: "images/title/sone00411.webp"
+      },
+                  {
+        audio: "audio/blk00629.mp3",
+
+        actress: "松本いちか",
+        actressUrl: "https://video.dmm.co.jp/av/list/?actress=1054998",
+        actressImage: "images/actress/matumoto_itika.webp",
+
+        title: "童貞の僕をフェラチオでいじめる小悪魔ギャル。でも初体験までさせてくれてもっと僕をイジメてくれた",
+        titleUrl: "https://video.dmm.co.jp/av/content/?id=blk00629&i3_ref=list&i3_ord=19&i3_pst=1&dmmref=video_list",
+        titleImage: "images/title/blk00629.webp"
+      },  
+                {
+        audio: "audio/ekdv00784.mp3",
+
+        actress: "乙アリス",
+        actressUrl: "https://video.dmm.co.jp/av/list/?actress=1065724",
+        actressImage: "images/actress/otu_arisu.webp",
+
+        title: "このメス女…只今発情真っ盛り！？乙アリスとしてみませんか？",
+        titleUrl: "https://video.dmm.co.jp/av/content/?id=ekdv00784&i3_ref=list&i3_ord=21&i3_pst=1&dmmref=video_list",
+        titleImage: "images/title/ekdv00784.webp"
+      }
+    ];
+
+    let questions = [];
+    let currentIndex = 0;
+
+    const audioPlayer = document.getElementById("audioPlayer");
+
+    function showScreen(screenId) {
+      document.getElementById("startScreen").classList.add("hidden");
+      document.getElementById("questionScreen").classList.add("hidden");
+      document.getElementById("answerScreen").classList.add("hidden");
+      document.getElementById("endScreen").classList.add("hidden");
+
+      document.getElementById(screenId).classList.remove("hidden");
+    }
+
+    function startGame() {
+      questions = shuffleArray([...data]);
+      currentIndex = 0;
+      showQuestion();
+    }
+
+    function showQuestion() {
+      const q = questions[currentIndex];
+      
+      stopAudio();
+      
+      document.getElementById("progress").textContent =
+      `${currentIndex + 1}問目`;
+      
+      audioPlayer.src = q.audio;
+      
+      showScreen("questionScreen");
+    }
+
+    function playAudio() {
+      audioPlayer.currentTime = 0;
+      audioPlayer.play();
+    }
+
+    function toggleAudio() {
+      if (audioPlayer.paused) {
+        audioPlayer.play();
+        setPlayingState(true);
+      } else {
+        audioPlayer.pause();
+        setPlayingState(false);
+      }
+    }
+
+    function stopAudio() {
+      audioPlayer.pause();
+      audioPlayer.currentTime = 0;
+      setPlayingState(false);
+    }
+    
+    function setPlayingState(isPlaying) {
+
+      const questionBtn = document.getElementById("questionPlayBtn");
+      const answerBtn = document.getElementById("answerPlayBtn");
+      [questionBtn, answerBtn].forEach(btn => {
+        if (!btn) return;
+        
+        if (isPlaying) {
+          btn.classList.add("playing");
+          btn.textContent = "■ 停止";
+        } else {
+          btn.classList.remove("playing");
+          btn.textContent = "▶ 再生";
+        }
+      });
+    }
+    
+    audioPlayer.addEventListener("ended", () => {
+      setPlayingState(false);
+    });
+    
+    function showAnswer() {
+      stopAudio();
+
+      const q = questions[currentIndex];
+
+      document.getElementById("actressImage").src = q.actressImage;
+      document.getElementById("workImage").src = q.titleImage;
+
+      document.getElementById("answerScreen").style.backgroundImage =
+        `url("${q.titleImage}")`;
+
+      document.getElementById("actressName").textContent = q.actress;
+      document.getElementById("actressLink").href = q.actressUrl;
+
+      document.getElementById("workTitle").textContent = q.title;
+      document.getElementById("titleLink").href = q.titleUrl;
+
+      if (currentIndex === questions.length - 1) {
+        document.getElementById("nextBtn").classList.add("hidden");
+      } else {
+        document.getElementById("nextBtn").classList.remove("hidden");
+      }
+
+      showScreen("answerScreen");
+    }
+
+    function nextQuestion() {
+      currentIndex++;
+
+      if (currentIndex >= questions.length) {
+        endGame();
+      } else {
+        showQuestion();
+      }
+    }
+
+    function endGame() {
+      stopAudio();
+      showScreen("endScreen");
+    }
+
+    function restartGame() {
+      stopAudio();
+      showScreen("startScreen");
+    }
+
+    function showNoMessage() {
+      document.getElementById("noMessage").classList.remove("hidden");
+    }
+
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    const emoQuotes = [
+    {
+      text: "青春とは心の若さである。",
+      author: "サミュエル・ウルマン"
+    },
+    {
+      text: "恋をしている時、人は少しだけ詩人になる。",
+      author: "プラトン"
+    },
+    {
+      text: "キスは、言葉が余計になったときに使うものだ。",
+      author: "イングリッド・バーグマン"
+    },
+    {
+      text: "愛とは、お互いを見つめ合うことではなく、同じ方向を見ることである。",
+      author: "サン＝テグジュペリ"
+    }
+    ];
+
+    function showNoMessage() {
+      const q = emoQuotes[Math.floor(Math.random() * emoQuotes.length)];
+
+      document.getElementById("startScreen").innerHTML = `
+        <h1>まだ、少し早いみたいです。</h1>
+
+      <div class="quote-box">
+        <p class="quote-text">「${q.text}」</p>
+        <p class="quote-author">— ${q.author}</p>
+      </div>
+
+      <p class="safe-message">
+        大人になるまで、もう少しだけ待っていてください。
+      </p>
+
+      <button onclick="location.reload()">戻る</button>
+      `;
+    }
+
+    function openImage(src) {
+      window.open(src, "_blank");
+    }
+
+    function openImageModal(src) {
+  document.getElementById("modalImage").src = src;
+  document.getElementById("imageModal").classList.remove("hidden");
+}
+
+function closeImageModal() {
+  document.getElementById("imageModal").classList.add("hidden");
+}
+    
+  </script>
+
+    <div id="imageModal" class="image-modal hidden" onclick="closeImageModal()">
+      <img id="modalImage" src="" alt="拡大画像">
+    </div>
+</body>
+</html>
